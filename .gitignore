@@ -1,0 +1,28 @@
+/generated/prisma
+node_modules/
+.env
+dist/
+*.log
+.DS_Store
+
+# dependencies
+/node_modules
+
+# env files
+.env
+.env.*
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# build
+/dist
+
+# OS files
+.DS_Store
+
+# prisma (agar use kar raha hai)
+prisma/migrations/*
+!prisma/migrations/.keep

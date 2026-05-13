@@ -1,0 +1,1950 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  MANAGER
+  AGENT
+  VENDOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum LeadPriority {
+  HOT
+  WARM
+  COLD
+}
+
+enum LeadSource {
+  WEBSITE
+  MANUAL
+  WHATSAPP
+  FACEBOOK
+  INSTAGRAM
+  MESSENGER
+  PHONE
+  OTHER
+}
+
+enum BookingStatus {
+  DRAFT
+  PENDING
+  REQUESTED
+  CONFIRMED
+  VOUCHER_SENT
+  READY
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TripStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+}
+
+enum BookingLogType {
+  SYSTEM
+  MANUAL
+}
+
+
+enum DayStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+
+enum RoomType {
+  STANDARD
+  DELUXE
+  SUITE
+}
+
+enum MealPlan {
+  CP
+  MAP
+  AP
+  EP
+}
+
+enum TravelClass {
+  ECONOMY
+  BUSINESS
+  FIRST
+}
+
+enum FlightStatus {
+  BOOKED
+  PENDING
+  CANCELLED
+}
+
+enum TransportType {
+  PRIVATE
+  SHARED
+}
+
+
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  REFUNDED
+}
+
+enum PaymentMode {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CHEQUE
+  CARD
+}
+
+enum FollowUpType {
+  CALL
+  MESSAGE
+  MEETING
+  EMAIL
+}
+
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  MISSED
+}
+
+enum ItineraryStatus {
+  DRAFT
+  FINALIZED
+  SENT
+  ARCHIVED
+}
+
+enum DayImageLayout {
+  IMAGE_TOP
+  IMAGE_RIGHT
+  GRID
+}
+
+enum VendorServiceType {
+  HOTEL
+  TRANSPORT
+  TOUR_OPERATOR
+  VISA
+  GUIDE
+  AIRLINE
+  ACTIVITY
+  OTHER
+}
+
+enum NotificationType {
+  NEW_LEAD
+  LEAD_ASSIGNED
+  FOLLOW_UP_DUE
+  NEW_MESSAGE
+  BOOKING_UPDATE
+  PAYMENT_UPDATE
+  SYSTEM
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+  PENDING
+  COMPLETED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum LeadInvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  CANCELLED
+}
+
+enum PermissionModule {
+  dashboard
+  leads
+  customers
+  itinerary
+  bookings
+  payments
+  tasks
+  users
+  reports
+  attendance
+  chat
+  vendors
+}
+
+enum PermissionAction {
+  view
+  create
+  edit
+  delete
+}
+
+
+enum CommunicationChannel {
+  WHATSAPP
+  EMAIL
+}
+
+enum CommunicationStatus {
+  SENT
+  FAILED
+  PENDING
+}
+
+enum TemplateType {
+  WHATSAPP
+  EMAIL
+}
+
+enum CustomerActivityType {
+  WHATSAPP_SENT
+  EMAIL_SENT
+  ITINERARY_CREATED
+  BOOKING_CREATED
+  PDF_SHARED
+  NOTE_ADDED
+  NOTE_UPDATED
+  CUSTOMER_CREATED
+  CUSTOMER_UPDATED
+  PAYMENT_RECEIVED
+  FOLLOW_UP_ADDED
+  FOLLOW_UP_COMPLETED
+  DOCUMENT_UPLOADED
+}
+
+enum CustomerNoteType {
+  GENERAL
+  PREFERENCE
+  INTERNAL
+}
+
+// ─────────────────────────────────────────────
+// CHAT SYSTEM
+// ─────────────────────────────────────────────
+
+enum MessageType {
+  TEXT
+  SYSTEM
+  TASK
+  FILE
+  IMAGE
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+enum ConversationType {
+  DIRECT
+  GROUP
+  BOOKING
+  LEAD
+}
+
+
+enum TaskType {
+  TASK
+  MEETING
+  FOLLOW_UP
+}
+
+enum RelatedToType {
+  LEAD
+  CUSTOMER
+  BOOKING
+}
+
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  PARTIAL
+  UNPAID
+  CANCELLED
+}
+
+enum GstType {
+  CGST_SGST  // Same state
+  IGST       // Different state
+  NONE       // No GST
+}
+
+enum InvoiceNumberFormat {
+  SIMPLE   // INV-001
+  YEARLY   // INV-2026-001
+}
+
+
+enum DealStatus {
+  PENDING
+  CONNECTED
+  COMPLETED
+  REJECTED
+}
+
+enum VendorStatus {
+  ACTIVE
+  INACTIVE
+  BLACKLISTED
+}
+
+
+enum UnifiedPaymentType {
+  INCOMING   // Money received (from customer / buyer)
+  OUTGOING   // Money paid out (to vendor / seller)
+}
+
+enum UnifiedPaymentSource {
+  BOOKING    // From BookingPayment
+  INVOICE    // From InvoicePayment (GstInvoice)
+  TICKET     // From TicketPayment (flight deals)
+  MANUAL     // Manually entered
+}
+
+
+// ─────────────────────────────────────────────
+// USERS
+// ─────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(uuid())
+  name         String
+  email        String     @unique
+  phone        String?
+  password     String
+  role         Role       @default(AGENT)
+  status       UserStatus @default(ACTIVE)
+  profileImage String?
+  department   String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  recordedPayments TicketPayment[] @relation("PaymentRecordedBy")
+  importedTickets  ImportedTicket[] @relation("TicketImportedBy")
+  agentPermission  AgentPermission?
+
+
+  assignedLeads      Lead[]       @relation("AgentLeads")
+  assignedCustomers  Customer[]   @relation("AgentCustomers")
+  followUps          FollowUp[]   @relation("AgentFollowUps")
+  sentMessages        Message[]                @relation("MessageSender")
+  messageReadReceipts MessageReadReceipt[]     @relation("MessageReadBy")
+  conversationParticipants ConversationParticipant[]
+  onlineStatus        UserOnlineStatus?
+  notifications      Notification[]
+  activityLogs       ActivityLog[]
+  createdItineraries Itinerary[]  @relation("CreatedByUser")
+  assignedTasks      LeadTask[]   @relation("TaskAssignee")
+  createdTasks       LeadTask[]   @relation("TaskCreator")
+  assignedMeetings   LeadMeeting[] @relation("MeetingAssignee")
+  createdMeetings    LeadMeeting[] @relation("MeetingCreator")
+  leadActivities     LeadActivity[] @relation("LeadActivityUser")
+  createdQuotations  LeadQuotation[] @relation("QuotationCreator")
+  createdLeadInvoices LeadInvoice[] @relation("LeadInvoiceCreator")
+  createdInvoices GstInvoice[] @relation("InvoiceCreator")
+  sellerListings    TicketSeller[] @relation("SellerCreatedBy")
+  buyerRequests     TicketBuyer[]  @relation("BuyerCreatedBy")
+  managedDeals      TicketDeal[]   @relation("DealManagedBy")
+  tasksAssigned  Task[]  @relation("TaskAssignedTo")
+  tasksCreated   Task[]  @relation("TaskCreatedBy")
+  vendorNotes  VendorNote[]  @relation("VendorNoteCreator")
+  createdTemplates        CommunicationTemplate[]  @relation("TemplateCreator")
+ sentCommunications      CustomerCommunication[]  @relation("CommunicationSender")
+ createdCustomerNotes    CustomerNote[]           @relation("NoteCreator")
+ performedActivities     CustomerActivityLog[]    @relation("ActivityPerformer")
+  lastLogin    DateTime?
+  customRoleId String?
+  customRole   CustomRole? @relation(fields: [customRoleId], references: [id], onDelete: SetNull)
+  unifiedPayments  UnifiedPayment[] @relation("UnifiedPaymentCreator")
+
+  @@map("users")
+}
+
+model CustomRole {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  users       User[]
+
+  @@map("custom_roles")
+}
+
+model RolePermission {
+  id         String           @id @default(uuid())
+  roleId     String
+  role       CustomRole       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  module     String           // e.g. "bookings", "leads"
+  action     String           // e.g. "view", "create", "edit", "delete"
+  allowed    Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@unique([roleId, module, action], name: "roleId_module_action")
+  @@map("role_permissions")
+}
+
+
+model CommunicationTemplate {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  type        TemplateType
+  subject     String?      // Email only
+  body        String
+  variables   String[]     @default([]) // ["name", "destination", "startDate"]
+  isDefault   Boolean      @default(false)
+  isActive    Boolean      @default(true)
+  createdById String?
+  createdBy   User?        @relation("TemplateCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  communications CustomerCommunication[]
+
+  @@map("communication_templates")
+}
+
+model CustomerCommunication {
+  id            String                @id @default(uuid())
+  customerId    String
+  customer      Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  channel       CommunicationChannel
+  status        CommunicationStatus   @default(SENT)
+  subject       String?               // Email only
+  message       String
+  attachmentUrl String?
+  templateId    String?
+  template      CommunicationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  sentById      String?
+  sentBy        User?                 @relation("CommunicationSender", fields: [sentById], references: [id], onDelete: SetNull)
+  sentAt        DateTime              @default(now())
+  createdAt     DateTime              @default(now())
+
+  @@map("customer_communications")
+}
+
+model CustomerNote {
+  id         String           @id @default(uuid())
+  customerId String
+  customer   Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  content    String
+  type       CustomerNoteType @default(GENERAL)
+  createdById String?
+  createdBy  User?            @relation("NoteCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  @@map("customer_notes")
+}
+
+model CustomerActivityLog {
+  id          String               @id @default(uuid())
+  customerId  String
+  customer    Customer             @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type        CustomerActivityType
+  title       String               // Human-readable: "WhatsApp sent to +91..."
+  description String?              // Extra context
+  metadata    Json?                // { templateId, bookingId, itineraryId, etc. }
+  performedById String?
+  performedBy   User?              @relation("ActivityPerformer", fields: [performedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime             @default(now())
+
+  @@map("customer_activity_logs")
+}
+
+// ─────────────────────────────────────────────
+// LEADS
+// ─────────────────────────────────────────────
+
+model LeadStage {
+  id        String   @id @default(uuid())
+  title     String   @unique
+  color     String   @default("#6366f1")
+  position  Int      @default(0)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isWon   Boolean  @default(false)
+
+  leads Lead[]
+
+  @@map("lead_stages")
+}
+
+model Lead {
+  id                  String       @id @default(uuid())
+  name                String
+  email               String?
+  phone               String
+  source              LeadSource   @default(MANUAL)
+  stageId             String?                     
+  stage               LeadStage?   @relation(fields: [stageId], references: [id])
+  priority            LeadPriority @default(WARM)
+  destination         String?
+  estimatedBudget     Float?
+  travelDate          DateTime?
+  numberOfTravelers   Int?
+  notes               String?
+  assignedToId        String?
+  assignedTo          User?        @relation("AgentLeads", fields: [assignedToId], references: [id])
+  convertedCustomerId String?      @unique
+  convertedCustomer   Customer?    @relation("ConvertedLead", fields: [convertedCustomerId], references: [id])
+  rating  Int?  @default(0)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  leadNotes    LeadNote[]
+  followUps    FollowUp[]
+  tasks        LeadTask[]
+  meetings     LeadMeeting[]
+  labels       LeadLabelAssignment[]
+  activities   LeadActivity[]
+  quotations   LeadQuotation[]
+  leadInvoices LeadInvoice[]
+  conversations Conversation[]
+
+  @@map("leads")
+}
+
+model LeadNote {
+  id        String   @id @default(uuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+
+  @@map("lead_notes")
+}
+
+// ─────────────────────────────────────────────
+// LEAD TASKS
+// ─────────────────────────────────────────────
+
+model LeadTask {
+  id           String       @id @default(uuid())
+  leadId       String
+  lead         Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  status       TaskStatus   @default(TODO)
+  priority     TaskPriority @default(MEDIUM)
+  assignedToId String?
+  assignedTo   User?        @relation("TaskAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  dueAt        DateTime?
+  completedAt  DateTime?
+  createdById  String?
+  createdBy    User?        @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("lead_tasks")
+}
+
+// ─────────────────────────────────────────────
+// LEAD MEETINGS
+// ─────────────────────────────────────────────
+
+model LeadMeeting {
+  id           String        @id @default(uuid())
+  leadId       String
+  lead         Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  status       MeetingStatus @default(SCHEDULED)
+  scheduledAt  DateTime
+  duration     Int?          // minutes
+  location     String?
+  meetingLink  String?
+  assignedToId String?
+  assignedTo   User?         @relation("MeetingAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdById  String?
+  createdBy    User?         @relation("MeetingCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("lead_meetings")
+}
+
+// ─────────────────────────────────────────────
+// LEAD LABELS
+// ─────────────────────────────────────────────
+
+model LeadLabel {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  color     String   @default("#6366f1")
+  createdAt DateTime @default(now())
+
+  assignments LeadLabelAssignment[]
+
+  @@map("lead_labels")
+}
+
+model LeadLabelAssignment {
+  id        String    @id @default(uuid())
+  leadId    String
+  lead      Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  labelId   String
+  label     LeadLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+
+  @@unique([leadId, labelId])
+  @@map("lead_label_assignments")
+}
+
+// ─────────────────────────────────────────────
+// LEAD ACTIVITY LOG
+// ─────────────────────────────────────────────
+
+model LeadActivity {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?    @relation("LeadActivityUser", fields: [userId], references: [id], onDelete: SetNull)
+  action      String   // e.g. "stage_changed", "note_added", "assigned", "followup_added"
+  description String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@map("lead_activities")
+}
+
+// ─────────────────────────────────────────────
+// LEAD QUOTATIONS
+// ─────────────────────────────────────────────
+
+model LeadQuotation {
+  id              String          @id @default(uuid())
+  leadId          String
+  lead            Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  quotationNumber String          @unique
+  status          QuotationStatus @default(DRAFT)
+  validUntil      DateTime?
+  subtotal        Float           @default(0)
+  discount        Float?          @default(0)
+  tax             Float?          @default(0)
+  total           Float           @default(0)
+  notes           String?
+  termsConditions String?
+  createdById     String?
+  createdBy       User?           @relation("QuotationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  items LeadQuotationItem[]
+
+  @@map("lead_quotations")
+}
+
+model LeadQuotationItem {
+  id          String        @id @default(uuid())
+  quotationId String
+  quotation   LeadQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int           @default(1)
+  unitPrice   Float
+  total       Float
+  createdAt   DateTime      @default(now())
+
+  @@map("lead_quotation_items")
+}
+
+// ─────────────────────────────────────────────
+// LEAD INVOICES
+// ─────────────────────────────────────────────
+
+model LeadInvoice {
+  id            String            @id @default(uuid())
+  leadId        String
+  lead          Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  invoiceNumber String            @unique
+  status        LeadInvoiceStatus @default(DRAFT)
+  dueDate       DateTime?
+  subtotal      Float             @default(0)
+  discount      Float?            @default(0)
+  tax           Float?            @default(0)
+  total         Float             @default(0)
+  paidAmount    Float             @default(0)
+  notes         String?
+  createdById   String?
+  createdBy     User?             @relation("LeadInvoiceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  items LeadInvoiceItem[]
+
+  @@map("lead_invoices")
+}
+
+model LeadInvoiceItem {
+  id          String      @id @default(uuid())
+  invoiceId   String
+  invoice     LeadInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int         @default(1)
+  unitPrice   Float
+  total       Float
+  createdAt   DateTime    @default(now())
+
+  @@map("lead_invoice_items")
+}
+
+
+
+model FollowUp {
+  id           String         @id @default(uuid())
+  leadId       String?
+  lead         Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  customerId   String?
+  customer     Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  assignedToId String?
+  assignedTo   User?          @relation("AgentFollowUps", fields: [assignedToId], references: [id])
+  type         FollowUpType   @default(CALL)
+  status       FollowUpStatus @default(PENDING)
+  dueAt        DateTime
+  notes        String?
+  completedAt  DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@map("follow_ups")
+}
+
+// ─────────────────────────────────────────────
+// CUSTOMERS
+// ─────────────────────────────────────────────
+
+model Customer {
+   id                String    @id @default(uuid())
+   name              String
+   email             String?
+   phone             String
+   address           String?
+   city              String?
+   country           String?
+   passportNumber    String?
+   passportExpiry    DateTime?
+   travelPreferences String?
+   notes             String?
+   assignedToId      String?
+   assignedTo        User?     @relation("AgentCustomers", fields: [assignedToId], references: [id])
+   tags              String[]  @default([])               
+   createdFromLeadId String?                              
+   totalSpend        Float     @default(0)                
+   createdAt         DateTime  @default(now())
+   updatedAt         DateTime  @updatedAt
+   leadConversion    Lead?              @relation("ConvertedLead")
+   bookings          Booking[]
+   itineraries       Itinerary[]
+   payments          Payment[]
+   followUps         FollowUp[]
+   documents         CustomerDocument[]
+   communications    CustomerCommunication[]   
+   customerNotes     CustomerNote[]            
+   activityLogs      CustomerActivityLog[]    
+   conversations     Conversation[] 
+   gstInvoices       GstInvoice[]
+   unifiedPayments  UnifiedPayment[]
+
+   @@map("customers")
+ }
+
+
+model CustomerDocument {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name       String
+  fileUrl    String
+  fileType   String?
+  createdAt  DateTime @default(now())
+
+  @@map("customer_documents")
+}
+
+// ─────────────────────────────────────────────
+// ITINERARIES
+// ─────────────────────────────────────────────
+
+model Itinerary {
+  id          String          @id @default(uuid())
+  title       String
+  // customerId kept for direct customer linkage
+  // (optional — null when used as pure template)
+  customerId  String?
+  customer    Customer?       @relation(fields: [customerId], references: [id])
+  createdById String?
+  createdBy   User?           @relation("CreatedByUser", fields: [createdById], references: [id])
+  status      ItineraryStatus @default(DRAFT)
+
+  // Trip meta
+  startDate        DateTime?
+  endDate          DateTime?
+  totalDays        Int?
+  destination      String?
+  startPoint       String?
+  endPoint         String?
+  durationLabel    String?       // e.g. "2N/3D"
+  totalPrice       Float?
+  numberOfTravelers Int?
+
+  // Hero image URL (Cloudinary / S3)
+  heroImageUrl String?
+
+  // Long-text blocks
+  inclusions  String?
+  exclusions  String?
+  notes       String?
+
+  // Template flag — pure templates have no customer
+  isTemplate  Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  days      ItineraryDay[]
+  theme     ItineraryTheme?
+  policies  ItineraryPolicy?
+  accounts  ItineraryAccount[]
+  thankYou  ItineraryThankYou?
+  bookings  Booking[]
+
+  @@map("itineraries")
+}
+
+model ItineraryDay {
+  id          String    @id @default(uuid())
+  itineraryId String
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  dayNumber   Int
+  date        DateTime?
+  title       String?
+  description String?   // rich text / markdown
+
+  // Legacy quick fields (kept for backward compat)
+  destination String?
+  hotel       String?
+  meals       String?
+  transfers   String?
+  sightseeing String?
+  activities  String?
+  notes       String?
+
+  // Image layout hint for PDF renderer
+  imageLayout DayImageLayout @default(IMAGE_TOP)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  images ItineraryImage[]
+
+  @@map("itinerary_days")
+}
+
+
+// ─────────────────────────────────────────────
+// ITINERARY IMAGE  (new)
+// ─────────────────────────────────────────────
+
+model ItineraryImage {
+  id        String       @id @default(uuid())
+  dayId     String
+  day       ItineraryDay @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  url       String       // Cloudinary URL
+  altText   String?
+  position  Int          @default(0) // ordering within day
+  createdAt DateTime     @default(now())
+
+  @@map("itinerary_images")
+}
+
+// ─────────────────────────────────────────────
+// ITINERARY THEME  (new — 1-to-1)
+// ─────────────────────────────────────────────
+
+model ItineraryTheme {
+  id              String    @id @default(uuid())
+  itineraryId     String    @unique
+  itinerary       Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  primaryColor    String    @default("#1a56db")
+  backgroundColor String    @default("#ffffff")
+  textColor       String    @default("#111827")
+  accentColor     String    @default("#f59e0b")
+  fontFamily      String    @default("Inter")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("itinerary_themes")
+}
+
+// ─────────────────────────────────────────────
+// ITINERARY POLICY  (new — 1-to-1)
+// ─────────────────────────────────────────────
+
+model ItineraryPolicy {
+  id                 String    @id @default(uuid())
+  itineraryId        String    @unique
+  itinerary          Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  bookingPolicy      String?
+  cancellationPolicy String?
+  paymentTerms       String?
+  otherPolicies      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@map("itinerary_policies")
+}
+
+// ─────────────────────────────────────────────
+// ITINERARY ACCOUNT  (new — 1-to-many)
+// ─────────────────────────────────────────────
+
+model ItineraryAccount {
+  id            String    @id @default(uuid())
+  itineraryId   String
+  itinerary     Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  bankName      String?
+  accountName   String?
+  accountNumber String?
+  ifscCode      String?
+  upiId         String?
+  upiQrImageUrl String?   // Cloudinary URL
+  isDefault     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  @@map("itinerary_accounts")
+}
+
+// ─────────────────────────────────────────────
+// ITINERARY THANK YOU PAGE  (new — 1-to-1)
+// ─────────────────────────────────────────────
+
+model ItineraryThankYou {
+  id              String    @id @default(uuid())
+  itineraryId     String    @unique
+  itinerary       Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  message         String?
+  backgroundImageUrl String?
+  companyName     String?
+  companyAddress  String?
+  companyEmail    String?
+  companyPhone    String?
+  companyWebsite  String?
+  findUsText      String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@map("itinerary_thank_you")
+}
+
+
+// ─────────────────────────────────────────────
+// BOOKINGS
+// ─────────────────────────────────────────────
+
+model Booking {
+  id          String        @id @default(uuid())
+  customerId  String
+  customer    Customer      @relation(fields: [customerId], references: [id])
+  itineraryId String?
+  itinerary   Itinerary?    @relation(fields: [itineraryId], references: [id])
+  status      BookingStatus @default(PENDING)
+  tripStatus  TripStatus    @default(UPCOMING) 
+  @@index([status])
+  @@index([tripStatus])
+  @@index([customerId])
+  @@index([createdAt])
+  adults      Int?
+  children    Int?
+  totalDays   Int?
+  totalNights Int?
+
+  travelStart DateTime?
+  travelEnd   DateTime?
+  totalAmount Float?
+  advancePaid Float?        @default(0)
+  pricePerAdult  Float?   
+  pricePerChild  Float?
+  paymentStatus PaymentStatus @default(PENDING)
+  notes       String?
+  gstInvoices GstInvoice[]
+
+  // New fields for voucher PDF + form
+  startDetails      String?
+  endDetails        String?
+  childAge          String?
+  tourDays          String?
+  inclusions        String?
+  dayWiseItinerary  String?
+  companyLogoUrl    String?
+  conversations Conversation[]
+
+  hotelBookings     HotelBooking[]
+  flightBookings    FlightBooking[]
+  transportBookings TransportBooking[]
+  items             BookingItem[]
+  payments          Payment[]
+  bookingPayments   BookingPayment[]
+  logs              BookingLog[]
+  tasks             BookingTask[]
+  travellers        BookingTraveller[]
+  days              BookingDay[]
+  unifiedPayments  UnifiedPayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bookings")
+}
+
+model BookingLog {
+  id        String         @id @default(uuid())
+  bookingId String
+  booking   Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  message   String
+  type      BookingLogType @default(SYSTEM)
+  createdAt DateTime       @default(now())
+  @@index([bookingId, createdAt])
+  @@map("booking_logs")
+}
+
+model BookingTask {
+  id          String     @id @default(uuid())
+  bookingId   String
+  booking     Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  title       String
+  isCompleted Boolean    @default(false)
+  isDefault   Boolean    @default(false)
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  @@index([bookingId])
+  @@map("booking_tasks")
+}
+
+model BookingTraveller {
+  id        String   @id @default(uuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  name      String
+  age       Int?
+  gender    Gender?
+  idProof   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([bookingId])
+  @@map("booking_travellers")
+}
+
+model BookingDay {
+  id          String    @id @default(uuid())
+  bookingId   String
+  booking     Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  dayNumber   Int
+  date        DateTime?
+  title       String?
+  description String?
+  status      DayStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  @@index([bookingId])
+  @@unique([bookingId, dayNumber])
+  @@map("booking_days")
+}
+
+model BookingPayment {
+  id        String   @id @default(uuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amount    Float
+  mode      String  
+  note      String?
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+  @@index([bookingId])
+  @@map("booking_payments")
+}
+
+
+model BookingItem {
+  id              String        @id @default(uuid())
+  bookingId       String
+  booking         Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  type            String
+  description     String?
+  vendorId        String?
+  vendor          Vendor?       @relation(fields: [vendorId], references: [id])
+  referenceNumber String?
+  amount          Float?
+  status          BookingStatus @default(PENDING)
+  notes           String?
+  createdAt       DateTime      @default(now())
+
+  @@map("booking_items")
+}
+
+
+// ─────────────────────────────────────────────
+// HOTEL BOOKINGS
+// ─────────────────────────────────────────────
+
+
+model HotelBooking {
+  id         String    @id @default(uuid())
+  bookingId  String
+  booking    Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+   vendorId    String?
+  vendor      Vendor?   @relation("HotelVendor", fields: [vendorId], references: [id], onDelete: SetNull)
+  vendorCost  Float?    
+  city       String
+  hotelName  String
+  checkIn    DateTime
+  checkOut   DateTime
+  nights     Int
+  rooms      Int       @default(1)
+  roomType   RoomType  @default(STANDARD)
+  mealPlan   MealPlan  @default(CP)
+  guests     Int       @default(1)
+  extraBed   Boolean   @default(false)
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  @@index([bookingId])
+  @@map("hotel_bookings")
+  @@index([vendorId])
+}
+
+// ─────────────────────────────────────────────
+// FLIGHT BOOKINGS
+// ─────────────────────────────────────────────
+
+
+model FlightBooking {
+  id           String       @id @default(uuid())
+  bookingId    String
+  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  from         String
+  to           String
+  departure    DateTime
+  arrival      DateTime
+  airline      String?
+  flightNumber String?
+  pnr          String?
+  travelClass  TravelClass  @default(ECONOMY)
+  vendorId    String?
+  vendor      Vendor?   @relation("FlightVendor", fields: [vendorId], references: [id], onDelete: SetNull)
+  vendorCost  Float?
+  baggage      String?
+  status       FlightStatus @default(PENDING)
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  @@index([bookingId])
+  @@index([vendorId])
+  @@map("flight_bookings")
+}
+
+// ─────────────────────────────────────────────
+// TRANSPORT BOOKINGS
+// ─────────────────────────────────────────────
+
+model TransportBooking {
+  id            String        @id @default(uuid())
+  bookingId     String
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vehicleType   String
+  vendorId    String?
+  vendor      Vendor?   @relation("TransportVendor", fields: [vendorId], references: [id], onDelete: SetNull)
+  vendorCost  Float?
+  pickup        String
+  drop          String
+  datetime      DateTime
+  driverName    String?
+  driverPhone   String?
+  transportType TransportType @default(PRIVATE)
+  days          Int?
+  included      Boolean       @default(false)
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  @@index([bookingId])
+  @@index([vendorId])
+  @@map("transport_bookings")
+}
+
+// ─────────────────────────────────────────────
+// PAYMENTS & INVOICES
+// ─────────────────────────────────────────────
+
+model Payment {
+  id            String        @id @default(uuid())
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  bookingId     String?
+  booking       Booking?      @relation(fields: [bookingId], references: [id])
+  amount        Float
+  mode          PaymentMode   @default(CASH)
+  status        PaymentStatus @default(UNPAID)
+  dueAmount     Float?
+  paidAmount    Float?        @default(0)
+  transactionId String?       // UTR / UPI ref / Cheque number etc.
+  notes         String?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  invoices Invoice[]
+
+  @@map("payments")
+}
+
+
+
+model Conversation {
+  id           String           @id @default(uuid())
+  type         ConversationType @default(DIRECT)
+  title        String?          // For group chats
+  bookingId    String?
+  booking      Booking?         @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  leadId       String?
+  lead         Lead?            @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  customerId   String?
+  customer     Customer?        @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  lastMessageAt DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadAt     DateTime?
+  joinedAt       DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String        @id @default(uuid())
+  conversationId String
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User          @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  messageText    String?
+  messageType    MessageType   @default(TEXT)
+  attachmentUrl  String?
+  metadata       Json?         // { taskId, bookingId, etc. for linked entities }
+  status         MessageStatus @default(SENT)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  readReceipts   MessageReadReceipt[]
+
+  @@map("messages")
+}
+
+model MessageReadReceipt {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation("MessageReadBy", fields: [userId], references: [id], onDelete: Cascade)
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@map("message_read_receipts")
+}
+
+model UserOnlineStatus {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isOnline  Boolean  @default(false)
+  lastSeen  DateTime @default(now())
+  socketId  String?
+  updatedAt DateTime @updatedAt
+
+  @@map("user_online_status")
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  paymentId     String
+  payment       Payment  @relation(fields: [paymentId], references: [id])
+  invoiceNumber String   @unique
+  amount        Float
+  issuedAt      DateTime @default(now())
+  notes         String?
+
+  @@map("invoices")
+}
+
+// ─────────────────────────────────────────────
+// VENDORS
+// ─────────────────────────────────────────────
+
+model Vendor {
+  id            String        @id @default(uuid())
+  name          String
+
+  // Multi-type support — stores VendorServiceType values as strings
+  // e.g. ["HOTEL", "TRANSPORT"]
+  types         String[]      @default([])
+
+  // Keep old single serviceType for backward compat (optional migration)
+  serviceType   VendorServiceType @default(OTHER)
+
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  city          String?
+  country       String?
+
+  // Financial & compliance
+  gstin               String?
+  pan                 String?
+  bankName            String?
+  accountName         String?
+  accountNumber       String?
+  ifscCode            String?
+  upiId               String?
+  commissionPercentage Float?    // replaces commissionRate
+  commissionRate       Float?    // keep for backward compat
+
+  // Operational
+  negotiatedRates   String?
+  availabilityNotes String?
+  notes             String?
+
+  // Status & flags
+  status      VendorStatus  @default(ACTIVE)
+  isActive    Boolean       @default(true)   // keep for backward compat
+  isPreferred Boolean       @default(false)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  bookingItems BookingItem[]
+  vendorNotes  VendorNote[]
+  unifiedPayments  UnifiedPayment[]
+  gstInvoices  GstInvoice[]
+
+  hotelBookings     HotelBooking[]     @relation("HotelVendor")
+  flightBookings    FlightBooking[]    @relation("FlightVendor")
+  transportBookings TransportBooking[] @relation("TransportVendor")
+
+  @@index([status])
+  @@index([isPreferred])
+  @@index([city])
+  @@index([name])
+  @@map("vendors")
+}
+
+model VendorNote {
+  id          String   @id @default(uuid())
+  vendorId    String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  content     String
+  createdById String?
+  createdBy   User?    @relation("VendorNoteCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([vendorId])
+  @@map("vendor_notes")
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────────
+// ACTIVITY LOGS
+// ─────────────────────────────────────────────
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@map("activity_logs")
+}
+
+
+
+
+
+// ── Task Model (add to your models section) ───────────────────────────────────
+
+model Task {
+  id                    String        @id @default(uuid())
+  title                 String
+  description           String?
+  type                  TaskType      @default(TASK)
+  relatedToType         RelatedToType?
+  relatedToId           String?       // ID of lead / customer / booking
+  assignedToId          String?
+  assignedTo            User?         @relation("TaskAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdById           String?
+  createdBy             User?         @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  dueDateTime           DateTime
+  reminderBeforeMinutes Int           @default(30)
+  reminderTime          DateTime      // Computed: dueDateTime - reminderBeforeMinutes
+  reminderSent          Boolean       @default(false)
+  overdueNotified       Boolean       @default(false)
+  priority              TaskPriority  @default(MEDIUM)
+  status                String        @default("PENDING") // PENDING | COMPLETED | CANCELLED
+  completedAt           DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([reminderTime, reminderSent, status])
+  @@index([dueDateTime, status])
+  @@index([assignedToId])
+  @@map("tasks")
+}
+
+
+
+
+// ─────────────────────────────────────────────
+// COMPANY SETTINGS (Singleton — only 1 row per org)
+// ─────────────────────────────────────────────
+
+model CompanySettings {
+  id                  String              @id @default(uuid())
+
+  // Branding
+  companyName         String              @default("My Company")
+  logoUrl             String?             // Cloudinary / S3 URL
+  tagline             String?
+
+  // Contact
+  address             String?
+  city                String?
+  state               String?
+  pincode             String?
+  phone               String?
+  email               String?
+  website             String?
+
+  // GST / Tax
+  gstin               String?             // e.g. 27AAPFU0939F1ZV
+  pan                 String?
+  stateCode           String?             // e.g. "27" for Maharashtra
+
+  // Bank Details
+  bankName            String?
+  accountName         String?
+  accountNumber       String?
+  ifscCode            String?
+  upiId               String?
+  upiQrImageUrl       String?
+
+  // Invoice Numbering
+  invoiceNumberFormat InvoiceNumberFormat @default(SIMPLE)
+  invoicePrefix       String              @default("INV")
+  lastInvoiceNumber   Int                 @default(0)
+  lastResetYear       Int?                // for YEARLY format
+
+  // Terms
+  defaultTerms        String?
+  defaultNotes        String?
+
+  // GST defaults
+  defaultGstRate      Float               @default(18)
+  defaultGstType      GstType             @default(CGST_SGST)
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  @@map("company_settings")
+}
+
+// ─────────────────────────────────────────────
+// INVOICE
+// ─────────────────────────────────────────────
+
+model GstInvoice {
+  id            String        @id @default(uuid())
+
+  // Invoice Identity
+  invoiceNumber String        @unique   // e.g. INV-001 or INV-2026-001
+  status        InvoiceStatus @default(DRAFT)
+
+  // Linked Entities (all optional — can be standalone)
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  bookingId   String?
+booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  vendorId      String?
+  vendor        Vendor?       @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  // Customer billing info (snapshot at invoice time)
+  billingName    String        // Customer name or company name
+  billingAddress String?
+  billingState   String?
+  billingPhone   String?
+  billingEmail   String?
+  customerGstin  String?       // Customer's GSTIN (if B2B)
+
+  // Dates
+  issueDate     DateTime      @default(now())
+  dueDate       DateTime?
+
+  // Financials
+  subtotal      Float         @default(0)
+  discountType  String?       // "PERCENT" or "FLAT"
+  discountValue Float?        @default(0)
+  discountAmount Float?       @default(0)
+
+  // GST
+  gstRate       Float         @default(18)   // e.g. 18 for 18%
+  gstType       GstType       @default(CGST_SGST)
+  cgstRate      Float?        @default(9)
+  sgstRate      Float?        @default(9)
+  igstRate      Float?        @default(0)
+  cgstAmount    Float         @default(0)
+  sgstAmount    Float         @default(0)
+  igstAmount    Float         @default(0)
+  totalGst      Float         @default(0)
+
+  totalAmount   Float         @default(0)
+  paidAmount    Float         @default(0)
+  dueAmount     Float         @default(0)
+
+  // Content
+  notes         String?
+  terms         String?
+
+  // Company snapshot (at time of invoice generation)
+  companySnapshot Json?        // full company settings snapshot
+
+  // Soft delete
+  isDeleted     Boolean       @default(false)
+  deletedAt     DateTime?
+
+  // Audit
+  createdById   String?
+  createdBy     User?         @relation("InvoiceCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items         GstInvoiceItem[]
+  payments      InvoicePayment[]
+  unifiedPayments  UnifiedPayment[]
+
+  @@map("gst_invoices")
+}
+
+// ─────────────────────────────────────────────
+// INVOICE ITEMS
+// ─────────────────────────────────────────────
+
+model GstInvoiceItem {
+  id          String     @id @default(uuid())
+  invoiceId   String
+  invoice     GstInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  description String
+  hsn         String?    // HSN/SAC code (optional, for GST compliance)
+  quantity    Float      @default(1)
+  unit        String?    // e.g. "Nos", "Days", "Pax"
+  price       Float      @default(0)
+  total       Float      @default(0)   // quantity * price
+
+  position    Int        @default(0)   // for ordering
+  createdAt   DateTime   @default(now())
+
+  @@map("gst_invoice_items")
+}
+
+// ─────────────────────────────────────────────
+// INVOICE PAYMENTS (partial payments tracking)
+// ─────────────────────────────────────────────
+
+model InvoicePayment {
+  id          String      @id @default(uuid())
+  invoiceId   String
+  invoice     GstInvoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  amount      Float
+  mode        PaymentMode @default(CASH)
+  transactionId String?   // UTR / UPI ref
+  note        String?
+  paidAt      DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+
+  @@map("invoice_payments")
+}
+
+
+
+// ─────────────────────────────────────────────
+// TICKET SELLER LISTING
+// ─────────────────────────────────────────────
+// ── Ticket Seller (enhanced) ──────────────────────────────────────────────────
+model TicketSeller {
+  id             String   @id @default(uuid())
+
+  brokerName     String
+  phone          String
+  email          String?
+
+  fromCity       String
+  toCity         String
+  departureTime  String
+  arrivalTime    String
+  travelDate     DateTime
+
+  seatsAvailable Int
+  pricePerSeat   Float
+  totalValue     Float?
+
+  airline        String?
+  flightNumber   String?
+  bookingRef     String?
+  ticketClass    String?
+  pnr            String?
+
+  purchasedAt    DateTime?
+  purchasePrice  Float?
+  purchasedFrom  String?
+
+  sourceChannel  String?
+  emailSource    String?
+
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdById    String
+  createdBy      User     @relation("SellerCreatedBy", fields: [createdById], references: [id])
+  deals          TicketDeal[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // ── Performance indexes ──────────────────────────────────────────────────
+  @@index([fromCity, toCity])           // route-based queries
+  @@index([travelDate])                 // date filtering
+  @@index([fromCity, toCity, travelDate]) // combined route+date (most common query)
+  @@index([isActive])                   // active listings filter
+  @@index([createdById])                // agent's own listings
+  @@index([createdAt])                  // sorting by newest
+}
+
+// ── Ticket Buyer (enhanced) ───────────────────────────────────────────────────
+model TicketBuyer {
+  id               String   @id @default(uuid())
+
+  brokerName       String
+  phone            String
+  email            String?
+
+  fromCity         String
+  toCity           String
+  preferredTimeFrom String
+  preferredTimeTo   String
+  travelDate       DateTime
+
+  seatsRequired    Int
+  budgetPerSeat    Float
+
+  passengerCount   Int?
+  passengerNames   String?
+
+  agreedPricePerSeat Float?
+  totalCollected     Float?
+  paymentMethod      String?
+  paymentStatus      String?
+  paymentDate        DateTime?
+  paymentRef         String?
+
+  sourceChannel  String?
+  emailSource    String?
+
+  notes          String?
+  isActive       Boolean  @default(true)
+  createdById    String
+  createdBy      User     @relation("BuyerCreatedBy", fields: [createdById], references: [id])
+  deals          TicketDeal[]
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // ── Performance indexes ──────────────────────────────────────────────────
+  @@index([fromCity, toCity])
+  @@index([travelDate])
+  @@index([fromCity, toCity, travelDate])
+  @@index([isActive])
+  @@index([createdById])
+  @@index([paymentStatus])              // filter by payment status
+  @@index([createdAt])
+}
+
+
+// ── Ticket Deal (enhanced) ────────────────────────────────────────────────────
+model TicketDeal {
+  id          String   @id @default(uuid())
+
+  sellerId    String
+  seller      TicketSeller @relation(fields: [sellerId], references: [id])
+  buyerId     String
+  buyer       TicketBuyer  @relation(fields: [buyerId], references: [id])
+
+  status      DealStatus @default(PENDING)
+
+  seatsBooked       Int?
+  sellerCostPerSeat Float?
+  buyerPricePerSeat Float?
+  commission        Float?
+
+  totalRevenue      Float?
+  totalCost         Float?
+  grossProfit       Float?
+
+  paymentStatus     String?
+  paymentReceivedAt DateTime?
+  paymentRef        String?
+
+  bookingConfirmed  Boolean  @default(false)
+  confirmationRef   String?
+  ticketsSent       Boolean  @default(false)
+  ticketsSentAt     DateTime?
+
+  adminNotes  String?
+  managedById String?
+  managedBy   User?    @relation("DealManagedBy", fields: [managedById], references: [id])
+
+  payments    TicketPayment[]
+  unifiedPayments  UnifiedPayment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // ── Performance indexes ──────────────────────────────────────────────────
+  @@index([status])                     // filter by deal status
+  @@index([sellerId])                   // seller's deals
+  @@index([buyerId])                    // buyer's deals
+  @@index([paymentStatus])              // payment tracking queries
+  @@index([createdAt])                  // dashboard "today's deals" + sorting
+  @@index([status, createdAt])          // combined — dashboard stats aggregation
+  @@index([managedById])                // manager's deals
+}
+
+
+
+// ── Payment Ledger (NEW) ──────────────────────────────────────────────────────
+model TicketPayment {
+  id          String   @id @default(uuid())
+  dealId      String
+  deal        TicketDeal @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  type        String   // RECEIVED (from buyer) | PAID (to seller)
+  amount      Float
+  method      String?  // CASH, UPI, BANK_TRANSFER, CARD
+  reference   String?  // UTR / txn ID
+  paidAt      DateTime @default(now())
+  notes       String?
+
+  recordedById String
+  recordedBy   User   @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+
+  createdAt   DateTime @default(now())
+}
+
+// ── Historical Import (NEW) ───────────────────────────────────────────────────
+// For storing previously imported ticket data from email/CSV
+model ImportedTicket {
+  id           String   @id @default(uuid())
+  importedById String
+  importedBy   User     @relation("TicketImportedBy", fields: [importedById], references: [id])
+
+  rawData      Json     // original row data
+  mappedTo     String?  // 'SELLER' | 'BUYER' | 'DEAL'
+  referenceId  String?  // ID of created TicketSeller/Buyer/Deal
+  
+  source       String?  // EMAIL, CSV, MANUAL
+  sourceEmail  String?
+  importBatch  String?  // group imports together
+
+  status       String   @default("PENDING") // PENDING, MAPPED, SKIPPED
+  notes        String?
+
+  createdAt    DateTime @default(now())
+}
+
+
+// ── Agent Permissions ─────────────────────────────────────────────────────────
+model AgentPermission {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Section-level access
+  canViewSellers   Boolean @default(false)
+  canAddSellers    Boolean @default(false)
+  canEditSellers   Boolean @default(false)
+  canDeleteSellers Boolean @default(false)
+
+  canViewBuyers    Boolean @default(false)
+  canAddBuyers     Boolean @default(false)
+  canEditBuyers    Boolean @default(false)
+  canDeleteBuyers  Boolean @default(false)
+
+  canViewDeals     Boolean @default(false)
+  canAddDeals      Boolean @default(false)
+  canEditDeals     Boolean @default(false)
+  canDeleteDeals   Boolean @default(false)
+
+  canViewReports   Boolean @default(false)
+  canImportData    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+
+model UnifiedPayment {
+  id          String                @id @default(uuid())
+
+  type        UnifiedPaymentType
+  source      UnifiedPaymentSource  @default(MANUAL)
+  sourceId    String?               // BookingPayment.id / InvoicePayment.id / TicketPayment.id
+
+  // ── Parties ────────────────────────────────
+  customerId  String?
+  customer    Customer?             @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  vendorId    String?
+  vendor      Vendor?               @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+
+  // Optional link to source entities
+  bookingId   String?
+  booking     Booking?              @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  invoiceId   String?
+  invoice     GstInvoice?           @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  dealId      String?
+  deal        TicketDeal?           @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  // ── Financials ─────────────────────────────
+  amount      Float
+  method      PaymentMode           @default(CASH)
+  status      PaymentStatus         @default(PAID)   // Most auto-entries are PAID; manual can be PENDING
+  reference   String?               // UTR / UPI ref / Cheque no
+
+  note        String?
+  paidAt      DateTime              @default(now())
+
+  // ── Audit ──────────────────────────────────
+  createdById String?
+  createdBy   User?                 @relation("UnifiedPaymentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([type])
+  @@index([source])
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([paidAt])
+  @@index([bookingId])
+  @@index([invoiceId])
+  @@index([dealId])
+
+  @@map("unified_payments")
+}
