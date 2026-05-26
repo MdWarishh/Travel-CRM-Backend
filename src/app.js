@@ -26,28 +26,42 @@ import { notFound } from './middleware/notFound.middleware.js';
 import invoiceRoutes from './modules/invoice/invoice.routes.js';
 import ticketRoutes from './modules/tickets/ticket.routes.js';
 import unifiedPaymentRoutes from './modules/payments/unified_payment.routes.js';
-
+import attendanceRoutes from './modules/attendance/attendance.routes.js';
+import './modules/attendance/attendance.cron.js';
 
 const app = express();
 
+// ─── Allowed Origins ───────────────────────────────────────────
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://crm.webcreativeagency.com',
+  ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []),
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // No origin = Postman, curl, mobile — allow
+    if (!origin) return callback(null, true);
+
+    if (
+      allowedOrigins.includes(origin) ||
+      /\.vercel\.app$/.test(origin)
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS blocked: ${origin}`));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
 // ─── Core Middleware ───────────────────────────────────────────
 app.use(helmet());
-
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-
-// Handle preflight for ALL routes
-app.options('*', cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
@@ -81,6 +95,7 @@ app.use(`${API}/tasks`, taskRoutes);
 app.use(`${API}/invoices`, invoiceRoutes);
 app.use(`${API}/tickets`, ticketRoutes);
 app.use(`${API}/unified-payments`, unifiedPaymentRoutes);
+app.use(`${API}/attendance`, attendanceRoutes);
 
 // ─── Error Handlers ────────────────────────────────────────────
 app.use(notFound);

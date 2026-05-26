@@ -17,6 +17,12 @@ const ticketClass = z
   .enum(['ECONOMY', 'BUSINESS', 'FIRST'])
   .optional();
 
+// ✅ coerce.number() — form se string aaye to bhi number ban jaayega
+// nonnegative() use kiya positive() ki jagah — 0 bhi valid hai edge case mein
+const positiveNum  = z.coerce.number({ invalid_type_error: 'Must be a number' }).positive('Must be greater than 0');
+const nonNegNum    = z.coerce.number({ invalid_type_error: 'Must be a number' }).nonnegative('Must be 0 or more');
+const positiveInt  = z.coerce.number({ invalid_type_error: 'Must be a number' }).int().positive('Must be a positive integer');
+
 // ═════════════════════════════════════════════════════════════════════════════
 // TICKET SELLER
 // ═════════════════════════════════════════════════════════════════════════════
@@ -30,8 +36,8 @@ export const createSellerSchema = z.object({
   departureTime:  timeString,
   arrivalTime:    timeString,
   travelDate:     z.string().min(1, 'Travel date is required'),
-  seatsAvailable: z.number().int().positive('Seats must be a positive integer'),
-  pricePerSeat:   z.number().positive('Price must be positive'),
+  seatsAvailable: positiveInt,
+  pricePerSeat:   positiveNum,  // ✅ coerce — form string → number
 
   // Optional contact
   email:          z.string().email().optional().or(z.literal('')),
@@ -44,9 +50,9 @@ export const createSellerSchema = z.object({
   pnr:            z.string().optional(),
 
   // Purchase tracking
-  purchasePrice:  z.number().positive().optional(),
+  purchasePrice:  positiveNum.optional(),
   purchasedFrom:  z.string().optional(),
-  purchasedAt:    z.string().optional(), // ISO date string
+  purchasedAt:    z.string().optional(),
 
   // Source
   sourceChannel:  sourceChannel,
@@ -72,19 +78,19 @@ export const createBuyerSchema = z.object({
   preferredTimeFrom: timeString,
   preferredTimeTo:   timeString,
   travelDate:        z.string().min(1, 'Travel date is required'),
-  seatsRequired:     z.number().int().positive('Seats required must be a positive integer'),
-  budgetPerSeat:     z.number().positive('Budget must be positive'),
+  seatsRequired:     positiveInt,  // ✅ coerce
+  budgetPerSeat:     positiveNum,  // ✅ coerce
 
   // Optional contact
   email:             z.string().email().optional().or(z.literal('')),
 
   // Passenger details
-  passengerCount:    z.number().int().positive().optional(),
+  passengerCount:    positiveInt.optional(),
   passengerNames:    z.string().optional(),
 
   // Payment tracking
-  agreedPricePerSeat: z.number().positive().optional(),
-  totalCollected:     z.number().nonnegative().optional(),
+  agreedPricePerSeat: positiveNum.optional(),
+  totalCollected:     nonNegNum.optional(),
   paymentMethod:      paymentMethod,
   paymentStatus:      z.enum(['PENDING', 'PARTIAL', 'PAID']).optional(),
   paymentDate:        z.string().optional(),
@@ -109,13 +115,11 @@ export const createDealSchema = z.object({
   sellerId:           z.string().uuid('Invalid seller ID'),
   buyerId:            z.string().uuid('Invalid buyer ID'),
 
-  // Financial
-  seatsBooked:        z.number().int().positive().optional(),
-  sellerCostPerSeat:  z.number().nonnegative().optional(),
-  buyerPricePerSeat:  z.number().nonnegative().optional(),
-  commission:         z.number().nonnegative().optional(), // flat commission (legacy)
+  seatsBooked:        positiveInt.optional(),
+  sellerCostPerSeat:  nonNegNum.optional(),
+  buyerPricePerSeat:  nonNegNum.optional(),
+  commission:         nonNegNum.optional(),
 
-  // Payment
   paymentStatus:      z.enum(['PENDING', 'PARTIAL', 'RECEIVED']).optional(),
   paymentRef:         z.string().optional(),
 
@@ -125,23 +129,19 @@ export const createDealSchema = z.object({
 export const updateDealSchema = z.object({
   status:             z.enum(['PENDING', 'CONNECTED', 'COMPLETED', 'REJECTED']).optional(),
 
-  // Financial
-  seatsBooked:        z.number().int().positive().optional(),
-  sellerCostPerSeat:  z.number().nonnegative().optional(),
-  buyerPricePerSeat:  z.number().nonnegative().optional(),
-  commission:         z.number().nonnegative().optional(),
+  seatsBooked:        positiveInt.optional(),
+  sellerCostPerSeat:  nonNegNum.optional(),
+  buyerPricePerSeat:  nonNegNum.optional(),
+  commission:         nonNegNum.optional(),
 
-  // P&L (calculated fields, can be overridden)
-  totalRevenue:       z.number().nonnegative().optional(),
-  totalCost:          z.number().nonnegative().optional(),
-  grossProfit:        z.number().optional(),
+  totalRevenue:       nonNegNum.optional(),
+  totalCost:          nonNegNum.optional(),
+  grossProfit:        z.coerce.number().optional(),
 
-  // Payment
   paymentStatus:      z.enum(['PENDING', 'PARTIAL', 'RECEIVED']).optional(),
   paymentReceivedAt:  z.string().optional(),
   paymentRef:         z.string().optional(),
 
-  // Booking confirmation
   bookingConfirmed:   z.boolean().optional(),
   confirmationRef:    z.string().optional(),
   ticketsSent:        z.boolean().optional(),
@@ -155,7 +155,7 @@ export const updateDealSchema = z.object({
 
 export const createPaymentSchema = z.object({
   type:      z.enum(['RECEIVED', 'PAID']),
-  amount:    z.number().positive('Amount must be positive'),
+  amount:    positiveNum,  // ✅ coerce
   method:    z.enum(['CASH', 'BANK_TRANSFER', 'UPI', 'CARD']).optional(),
   reference: z.string().optional(),
   paidAt:    z.string().optional(),

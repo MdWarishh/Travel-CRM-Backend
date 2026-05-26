@@ -17,6 +17,7 @@ export const MODULES = [
   'attendance',
   'chat',
   'vendors',
+  'flight_tickets', // ✅ Added
 ];
 
 export const ACTIONS = ['view', 'create', 'edit', 'delete'];
@@ -52,8 +53,6 @@ export const updateUserSchema = z.object({
   department: z.string().max(100).optional().nullable(),
   status: z.enum(STATUSES).optional(),
   profileImage: z.string().url('Invalid image URL').optional().nullable(),
-  // ✅ customRoleId — permission assignment ke liye zaroori
-  // null allow kiya taaki system role pe wapas ja sake
   customRoleId: z.string().uuid('Invalid role ID').optional().nullable(),
 });
 

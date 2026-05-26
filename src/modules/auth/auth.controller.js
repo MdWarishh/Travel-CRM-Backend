@@ -9,8 +9,8 @@ export const login = async (req, res) => {
 };
 
 export const getMe = async (req, res) => {
-  const user = await authService.getMe(req.user.id);
-  return ApiResponse.success(res, user);
+  const result = await authService.getMe(req.user.id);
+  return ApiResponse.success(res, result);
 };
 
 export const logout = async (req, res) => {

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as ticketController from './ticket.controller.js';
 import { authenticate, authorize } from '../../middleware/auth.middleware.js';
 import { permissionMiddleware as pm } from './ticket.controller.js';
+import { AppError } from '../../utils/helpers.js';
 
 const router = Router();
 
@@ -15,93 +16,102 @@ router.get('/stats', ticketController.getDashboardStats);
 router.get('/matches', ticketController.getMatches);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AGENT PERMISSIONS (ADMIN only)
+// AGENT PERMISSIONS
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/permissions',              authorize('ADMIN', 'MANAGER'), ticketController.getAllAgentPermissions);
-router.get('/permissions/:userId',      authorize('ADMIN', 'MANAGER'), ticketController.getAgentPermissions);
-router.post('/permissions',             authorize('ADMIN'),            ticketController.upsertAgentPermissions);
+
+// GET all permissions — ADMIN + MANAGER only
+router.get(
+  '/permissions',
+  authorize('ADMIN', 'MANAGER'),
+  ticketController.getAllAgentPermissions
+);
+
+// GET own or specific user permissions
+// ✅ FIX: User apni khud ki permissions fetch kar sakta hai
+//         ADMIN/MANAGER kisi bhi user ki fetch kar sakte hain
+router.get('/permissions/:userId', async (req, res, next) => {
+  try {
+    const isSelf = req.params.userId === req.user.id;
+    const isAdminOrManager =
+      req.user.role === 'ADMIN' || req.user.role === 'MANAGER';
+
+    if (!isSelf && !isAdminOrManager) {
+      throw new AppError('Access denied.', 403);
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+}, ticketController.getAgentPermissions);
+
+// POST upsert permissions — ADMIN only
+router.post(
+  '/permissions',
+  authorize('ADMIN'),
+  ticketController.upsertAgentPermissions
+);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SELLERS
-// Agents: need canViewSellers / canAddSellers / canEditSellers / canDeleteSellers
-// ADMIN & MANAGER bypass all permission checks (handled inside checkTicketPermission)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/sellers',          pm.viewSellers,   ticketController.getAllSellers);
-router.get('/sellers/:id',      pm.viewSellers,   ticketController.getSellerById);
-router.post('/sellers',         pm.addSellers,    ticketController.createSeller);
-router.put('/sellers/:id',      pm.editSellers,   ticketController.updateSeller);
-router.patch('/sellers/:id',    pm.editSellers,   ticketController.updateSeller);
-router.delete('/sellers/:id',   pm.deleteSellers, ticketController.deleteSeller);
+router.get('/sellers',        pm.viewSellers,   ticketController.getAllSellers);
+router.get('/sellers/:id',    pm.viewSellers,   ticketController.getSellerById);
+router.post('/sellers',       pm.addSellers,    ticketController.createSeller);
+router.put('/sellers/:id',    pm.editSellers,   ticketController.updateSeller);
+router.patch('/sellers/:id',  pm.editSellers,   ticketController.updateSeller);
+router.delete('/sellers/:id', pm.deleteSellers, ticketController.deleteSeller);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BUYERS
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/buyers',           pm.viewBuyers,   ticketController.getAllBuyers);
-router.get('/buyers/:id',       pm.viewBuyers,   ticketController.getBuyerById);
-router.post('/buyers',          pm.addBuyers,    ticketController.createBuyer);
-router.put('/buyers/:id',       pm.editBuyers,   ticketController.updateBuyer);
-router.patch('/buyers/:id',     pm.editBuyers,   ticketController.updateBuyer);
-router.delete('/buyers/:id',    pm.deleteBuyers, ticketController.deleteBuyer);
+router.get('/buyers',        pm.viewBuyers,   ticketController.getAllBuyers);
+router.get('/buyers/:id',    pm.viewBuyers,   ticketController.getBuyerById);
+router.post('/buyers',       pm.addBuyers,    ticketController.createBuyer);
+router.put('/buyers/:id',    pm.editBuyers,   ticketController.updateBuyer);
+router.patch('/buyers/:id',  pm.editBuyers,   ticketController.updateBuyer);
+router.delete('/buyers/:id', pm.deleteBuyers, ticketController.deleteBuyer);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DEALS
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/deals',            pm.viewDeals,   ticketController.getAllDeals);
-router.get('/deals/:id',        pm.viewDeals,   ticketController.getDealById);
-router.post('/deals',           pm.addDeals,    ticketController.connectDeal);
-router.put('/deals/:id',        pm.editDeals,   ticketController.updateDeal);
-router.patch('/deals/:id',      pm.editDeals,   ticketController.updateDeal);
-router.delete('/deals/:id',     pm.deleteDeals, ticketController.deleteDeal);
+router.get('/deals',        pm.viewDeals,   ticketController.getAllDeals);
+router.get('/deals/:id',    pm.viewDeals,   ticketController.getDealById);
+router.post('/deals',       pm.addDeals,    ticketController.connectDeal);
+router.put('/deals/:id',    pm.editDeals,   ticketController.updateDeal);
+router.patch('/deals/:id',  pm.editDeals,   ticketController.updateDeal);
+router.delete('/deals/:id', pm.deleteDeals, ticketController.deleteDeal);
 
-// WhatsApp link
-router.get('/deals/:id/whatsapp',
+// WhatsApp link — ADMIN + MANAGER only
+router.get(
+  '/deals/:id/whatsapp',
   authorize('ADMIN', 'MANAGER'),
   ticketController.getWhatsAppLink
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAYMENT LEDGER
-// GET  /tickets/deals/:id/payments       — list all payments for a deal
-// POST /tickets/deals/:id/payments       — add payment entry
-// DELETE /tickets/payments/:paymentId    — delete payment entry (ADMIN only)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/deals/:id/payments',
-  pm.viewDeals,
-  ticketController.getDealPayments
-);
-
-router.post('/deals/:id/payments',
-  pm.editDeals,
-  ticketController.addPayment
-);
-
-router.delete('/payments/:paymentId',
+router.get('/deals/:id/payments',  pm.viewDeals, ticketController.getDealPayments);
+router.post('/deals/:id/payments', pm.editDeals, ticketController.addPayment);
+router.delete(
+  '/payments/:paymentId',
   authorize('ADMIN', 'MANAGER'),
   ticketController.deletePayment
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
 // REPORTS
-// GET /tickets/reports/revenue?dateFrom=&dateTo=&groupBy=month|day
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/reports/revenue',
-  pm.viewReports,
-  ticketController.getRevenueReport
-);
+router.get('/reports/revenue', pm.viewReports, ticketController.getRevenueReport);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BULK IMPORT
-// POST /tickets/import          — bulk import records
-// GET  /tickets/import/history  — view import history
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/import/history',
+router.get(
+  '/import/history',
   authorize('ADMIN', 'MANAGER'),
   ticketController.getImportHistory
 );
-
-router.post('/import',
-  pm.importData,
-  ticketController.bulkImport
-);
+router.post('/import', pm.importData, ticketController.bulkImport);
 
 export default router;
