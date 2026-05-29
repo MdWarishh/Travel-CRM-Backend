@@ -189,14 +189,17 @@ export const updateLeadRating = async (leadId, rating, requestingUser) => {
 };
 
 // ─── Change Stage — with auto-convert on "Won" stage ─────────────────────────
+// ─── Change Stage — with auto-convert on "Won" stage ─────────────────────────
 export const changeLeadStage = async (leadId, stageId, requestingUser) => {
-  // Parallel: check lead + check stage simultaneously
   const [existing, stage] = await Promise.all([
     prisma.lead.findUnique({
       where: { id: leadId },
-     select: { id: true, name: true, email: true, phone: true, notes: true, assignedToId: true, stageId: true, convertedCustomerId: true },
+      select: { id: true, name: true, email: true, phone: true, notes: true, assignedToId: true, stageId: true, convertedCustomerId: true },
     }),
-    prisma.leadStage.findUnique({ where: { id: stageId }, select: { id: true, title: true, color: true, isWon: true } }),
+    prisma.leadStage.findUnique({ 
+      where: { id: stageId }, 
+      select: { id: true, title: true, color: true, isWon: true } 
+    }),
   ]);
 
   if (!existing) throw new AppError('Lead not found', 404);
@@ -204,6 +207,7 @@ export const changeLeadStage = async (leadId, stageId, requestingUser) => {
     throw new AppError('Access denied', 403);
   if (!stage) throw new AppError('Stage not found', 404);
 
+  // Stage change pehle karo
   const updated = await prisma.lead.update({
     where: { id: leadId },
     data: { stageId },
@@ -220,28 +224,40 @@ export const changeLeadStage = async (leadId, stageId, requestingUser) => {
   emitToRole('MANAGER', 'lead_stage_changed', safeData);
   if (updated.assignedToId) emitToUser(updated.assignedToId, 'lead_stage_changed', sanitize({ lead: updated }));
 
-  // ── Auto-convert on "Won" stage ───────────────────────────────────────────
- if (stage.isWon && !existing.convertedCustomerId) {
-  try {
-    const { customer, alreadyExisted } = await autoConvertLeadToCustomer(
-      leadId,
-      existing,   // ← updated ki jagah existing pass karo (phone/email/notes sab hai isme)
-      requestingUser
-    );
-    return {
-      lead: updated,          // ← updated lead (already fetched above)
-      customer,
-      autoConverted: true,
-      alreadyExisted,
-    };
-  } catch (err) {
-    console.error('[changeLeadStage] Auto-convert failed:', err.message);
-    // Stage change succeed hua hai — sirf conversion fail hua
-    // Return normally without crashing
+  // ── Auto-convert on Won stage ─────────────────────────────────────────────
+  // isWon flag use karo — title pe depend mat karo
+  const isWonStage = stage.isWon === true || stage.title.toUpperCase() === 'WON';
+
+  if (isWonStage && !existing.convertedCustomerId) {
+    try {
+      const { customer, alreadyExisted } = await autoConvertLeadToCustomer(
+        leadId,
+        existing,
+        requestingUser
+      );
+      // ✅ CONSISTENT response — hamesha same shape return karo
+      return {
+        lead: updated,
+        customer,
+        autoConverted: true,
+        alreadyExisted: !!alreadyExisted,
+      };
+    } catch (err) {
+      console.error('[changeLeadStage] Auto-convert failed:', err.message);
+      // Stage change succeed hua — conversion fail pe bhi proper response do
+      return {
+        lead: updated,
+        autoConverted: false,
+        conversionError: err.message,
+      };
+    }
   }
-}
- 
-return updated;
+
+  // Normal stage change — consistent shape
+  return {
+    lead: updated,
+    autoConverted: false,
+  };
 };
 
 // ─── Internal auto-convert helper ────────────────────────────────────────────

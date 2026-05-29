@@ -104,8 +104,16 @@ export const getLeadPipeline = async (req, res) => {
 export const changeLeadStage = async (req, res) => {
   const { stageId } = req.body;
   if (!stageId) return ApiResponse.error(res, 'stageId is required', 400);
+  
   const result = await leadService.changeLeadStage(req.params.id, stageId, req.user);
-  return ApiResponse.success(res, result, 'Lead stage updated');
+  
+  const message = result.autoConverted
+    ? result.alreadyExisted
+      ? 'Stage updated — linked to existing customer'
+      : 'Stage updated — customer created automatically!'
+    : 'Lead stage updated';
+
+  return ApiResponse.success(res, result, message);
 };
 
 // ─── Rating ───────────────────────────────────────────────────────────────────
