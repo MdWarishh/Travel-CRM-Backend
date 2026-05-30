@@ -12,7 +12,10 @@ export const itineraryImageSchema = z.object({
 
 export const itineraryDaySchema = z.object({
   dayNumber: z.number().int().positive(),
-  date: z.coerce.date().optional(),
+  date: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : v),
+    z.coerce.date().optional()
+  ),
   title: z.string().optional(),
   description: z.string().optional(),
   imageLayout: z.enum(['IMAGE_TOP', 'IMAGE_RIGHT', 'GRID']).default('IMAGE_TOP'),
@@ -76,8 +79,14 @@ const baseItinerarySchema = z.object({
   status: z.enum(['DRAFT', 'FINALIZED', 'SENT', 'ARCHIVED']).default('DRAFT'),
   isTemplate: z.boolean().default(false),
 
-  startDate: z.coerce.date().optional(),
-  endDate: z.coerce.date().optional(),
+  startDate: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : v),
+    z.coerce.date().optional()
+  ),
+  endDate: z.preprocess(
+    (v) => (v === '' || v === null || v === undefined ? undefined : v),
+    z.coerce.date().optional()
+  ),
 
   totalDays: z.number().int().positive().optional(),
   destination: z.string().optional(),

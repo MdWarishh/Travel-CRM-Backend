@@ -28,6 +28,8 @@ import ticketRoutes from './modules/tickets/ticket.routes.js';
 import unifiedPaymentRoutes from './modules/payments/unified_payment.routes.js';
 import attendanceRoutes from './modules/attendance/attendance.routes.js';
 import './modules/attendance/attendance.cron.js';
+import uploadRouter from './modules/upload/upload.routes.js';
+
 
 const app = express();
 
@@ -96,6 +98,7 @@ app.use(`${API}/invoices`, invoiceRoutes);
 app.use(`${API}/tickets`, ticketRoutes);
 app.use(`${API}/unified-payments`, unifiedPaymentRoutes);
 app.use(`${API}/attendance`, attendanceRoutes);
+app.use(`${API}/upload`, uploadRouter);
 
 // ─── Error Handlers ────────────────────────────────────────────
 app.use(notFound);

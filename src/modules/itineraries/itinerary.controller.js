@@ -80,9 +80,79 @@ export const deleteDay = async (req, res) => {
 };
 
 // ─────────────────────────────────────────────
+// IMAGE URL HELPER
+// Puppeteer runs in a separate process and cannot
+// access localhost URLs. Only absolute https:// URLs
+// (e.g. Cloudinary) work inside the PDF renderer.
+// This helper converts any image URL to base64 so
+// Puppeteer can embed it without any network call.
+// ─────────────────────────────────────────────
+
+const toBase64DataUrl = async (url) => {
+  if (!url) return null;
+
+  // Only process absolute http/https URLs
+  if (!url.startsWith('http')) return url;
+
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+
+    const contentType = res.headers.get('content-type') || 'image/jpeg';
+    const buffer = await res.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+    return `data:${contentType};base64,${base64}`;
+  } catch (err) {
+    console.warn(`[PDF] Could not fetch image: ${url}`, err.message);
+    return null; // skip broken image rather than crash
+  }
+};
+
+/**
+ * Deep-converts all image URLs in an itinerary object to base64 data URIs
+ * so Puppeteer can render them without making outbound HTTP requests.
+ */
+const resolveItineraryImages = async (itinerary) => {
+  // Clone to avoid mutating the original object
+  const clone = JSON.parse(JSON.stringify(itinerary));
+
+  // Hero image
+  if (clone.heroImageUrl) {
+    clone.heroImageUrl = await toBase64DataUrl(clone.heroImageUrl);
+  }
+
+  // Thank you background
+  if (clone.thankYou?.backgroundImageUrl) {
+    clone.thankYou.backgroundImageUrl = await toBase64DataUrl(
+      clone.thankYou.backgroundImageUrl
+    );
+  }
+
+  // Day images
+  if (Array.isArray(clone.days)) {
+    for (const day of clone.days) {
+      if (Array.isArray(day.images)) {
+        for (const img of day.images) {
+          img.url = await toBase64DataUrl(img.url);
+        }
+      }
+    }
+  }
+
+  // Account QR codes
+  if (Array.isArray(clone.accounts)) {
+    for (const acc of clone.accounts) {
+      if (acc.upiQrImageUrl) {
+        acc.upiQrImageUrl = await toBase64DataUrl(acc.upiQrImageUrl);
+      }
+    }
+  }
+
+  return clone;
+};
+
+// ─────────────────────────────────────────────
 // PDF GENERATION
-// Input: itineraryId + optional leadId / overrides
-// Customer name is injected dynamically from lead
 // ─────────────────────────────────────────────
 
 export const generatePdf = async (req, res) => {
@@ -109,25 +179,29 @@ export const generatePdf = async (req, res) => {
     numberOfTravelers = numberOfTravelers || lead.numberOfTravelers;
   }
 
-  const pdfBuffer = await generateItineraryPdf(itinerary, {
+  // ✅ Convert all image URLs → base64 so Puppeteer renders them correctly
+  const itineraryWithImages = await resolveItineraryImages(itinerary);
+
+  const pdfBuffer = await generateItineraryPdf(itineraryWithImages, {
     customerName,
     travelDate,
     numberOfTravelers,
   });
 
-  // Debug: log buffer info — remove after confirming PDF works
-  console.log('[PDF] Buffer type:', pdfBuffer.constructor.name, '| Size:', pdfBuffer.length, 'bytes | Header:', pdfBuffer.slice(0,4).toString('ascii'));
+  console.log(
+    '[PDF] Buffer type:', pdfBuffer.constructor.name,
+    '| Size:', pdfBuffer.length, 'bytes',
+    '| Header:', pdfBuffer.slice(0, 4).toString('ascii')
+  );
 
   const safeName = itinerary.title
-    .replace(/[^a-zA-Z0-9\s-]/g, '')   // strip special chars
+    .replace(/[^a-zA-Z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .toLowerCase()
     .slice(0, 60);
 
   const filename = `itinerary-${safeName}-${Date.now()}.pdf`;
 
-  // Do NOT set Content-Length manually — Express calculates it correctly
-  // from the Buffer. Manual value can be wrong if buffer is Uint8Array.
   res.set({
     'Content-Type': 'application/pdf',
     'Content-Disposition': `attachment; filename="${filename}"`,
@@ -135,6 +209,5 @@ export const generatePdf = async (req, res) => {
     'X-Content-Type-Options': 'nosniff',
   });
 
-  // end() instead of send() — skip Express body middleware, raw buffer only
   return res.end(pdfBuffer);
 };

@@ -261,30 +261,27 @@ class ChatService {
 
   // ─── Search ───────────────────────────────────────────────
 
-  async searchUsers(query, currentUserId) {
-    return prisma.user.findMany({
-      where: {
-        id: { not: currentUserId },
-        status: 'ACTIVE',
+async searchUsers(query, currentUserId) {
+  return prisma.user.findMany({
+    where: {
+      id: { not: currentUserId },
+      status: 'ACTIVE',
+      // ✅ Only filter if query exists
+      ...(query ? {
         OR: [
           { name: { contains: query, mode: 'insensitive' } },
           { email: { contains: query, mode: 'insensitive' } },
         ],
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        profileImage: true,
-        role: true,
-        department: true,
-        onlineStatus: {
-          select: { isOnline: true, lastSeen: true },
-        },
-      },
-      take: 20,
-    });
-  }
+      } : {}),
+    },
+    select: {
+      id: true, name: true, email: true,
+      profileImage: true, role: true, department: true,
+      onlineStatus: { select: { isOnline: true, lastSeen: true } },
+    },
+    take: 50, // ✅ Increase limit for showing all
+  });
+}
 
   async getConversationByBooking(bookingId, userId) {
     return prisma.conversation.findFirst({
@@ -305,6 +302,23 @@ class ChatService {
       include: this._conversationInclude(),
     });
   }
+
+
+  async createGroupConversation(creatorId, participantIds, title) {
+  // Deduplicate + include creator
+  const allIds = [...new Set([creatorId, ...participantIds])];
+
+  return prisma.conversation.create({
+    data: {
+      type: 'GROUP',
+      title: title || 'Group Chat',
+      participants: {
+        create: allIds.map(userId => ({ userId })),
+      },
+    },
+    include: this._conversationInclude(),
+  });
+}
 
   async getTotalUnreadCount(userId) {
     const participant = await prisma.conversationParticipant.findMany({

@@ -120,18 +120,16 @@ class ChatController {
   }
 
   // GET /chats/users/search?q=
-  async searchUsers(req, res) {
-    try {
-      const { q } = req.query;
-      if (!q || q.trim().length < 1) {
-        return res.json({ success: true, data: [] });
-      }
-      const users = await chatService.searchUsers(q.trim(), req.user.id);
-      res.json({ success: true, data: users });
-    } catch (err) {
-      res.status(500).json({ success: false, message: err.message });
-    }
+ async searchUsers(req, res) {
+  try {
+    const { q } = req.query;
+    // ✅ Remove the early return — pass empty string to service
+    const users = await chatService.searchUsers(q?.trim() || '', req.user.id);
+    res.json({ success: true, data: users });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
+}
 
   // GET /chats/unread-count
   async getUnreadCount(req, res) {
@@ -142,6 +140,41 @@ class ChatController {
       res.status(500).json({ success: false, message: err.message });
     }
   }
+
+  async createOrGetConversation(req, res) {
+  try {
+    const parsed = createConversationSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, errors: parsed.error.errors });
+    }
+
+    const { participantId, participantIds, type, ...rest } = parsed.data;
+
+    let conversation;
+    if (type === 'GROUP') {
+      // ✅ New: group creation
+      conversation = await chatService.createGroupConversation(
+        req.user.id, participantIds, rest.title
+      );
+    } else if (type === 'DIRECT' || !type) {
+      conversation = await chatService.getOrCreateDirectConversation(req.user.id, participantId);
+    } else {
+      conversation = await chatService.createContextConversation(req.user.id, { participantId, type, ...rest });
+    }
+
+    // ✅ Notify all participants via socket
+    const io = req.app.get('io');
+    if (io && type === 'GROUP') {
+      conversation.participants.forEach(p => {
+        io.to(`user:${p.userId}`).emit('new_conversation', conversation);
+      });
+    }
+
+    res.json({ success: true, data: conversation });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+}
 
   // GET /chats/booking/:bookingId
   async getBookingConversation(req, res) {

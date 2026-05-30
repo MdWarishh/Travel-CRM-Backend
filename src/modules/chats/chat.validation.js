@@ -1,13 +1,18 @@
 import { z } from 'zod';
 
 export const createConversationSchema = z.object({
-  participantId: z.string().uuid('Invalid participant ID'),
-  type: z.enum(['DIRECT', 'GROUP', 'BOOKING', 'LEAD']).default('DIRECT'),
+  participantId: z.string().optional(),
+  participantIds: z.array(z.string()).min(2).optional(),
+  type: z.enum(['DIRECT', 'GROUP', 'BOOKING', 'LEAD']).optional(),
   title: z.string().optional(),
-  bookingId: z.string().uuid().optional(),
-  leadId: z.string().uuid().optional(),
-  customerId: z.string().uuid().optional(),
-});
+  bookingId: z.string().optional(),
+  leadId: z.string().optional(),
+  customerId: z.string().optional(),
+}).refine(data => {
+  if (data.type === 'GROUP') return !!data.participantIds?.length;
+  return !!data.participantId;
+}, { message: 'participantId required for direct, participantIds for group' });
+
 
 export const sendMessageSchema = z.object({
   messageText: z.string().min(1).optional(),

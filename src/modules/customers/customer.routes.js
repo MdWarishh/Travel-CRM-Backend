@@ -32,7 +32,7 @@ router.get('/',     requirePermission('customers', 'view'),   c.getAllCustomers)
 router.post('/',    requirePermission('customers', 'create'), c.createCustomer);
 router.get('/:id',  requirePermission('customers', 'view'),   c.getCustomerById);
 router.put('/:id',  requirePermission('customers', 'edit'),   c.updateCustomer);
-router.delete('/:id', authorize('ADMIN', 'MANAGER'),          c.deleteCustomer);
+router.delete('/:id', requirePermission('customers', 'edit'),          c.deleteCustomer);
 
 // ─── Timeline ─────────────────────────────────────────────────────────
 router.get('/:id/timeline',       requirePermission('customers', 'view'), c.getCustomerTimeline);
