@@ -359,6 +359,11 @@ enum UnifiedPaymentSource {
   MANUAL     // Manually entered
 }
 
+enum AttendanceStatus {
+  PRESENT    // totalHours >= 8
+  HALF_DAY   // totalHours > 0 && totalHours < 8
+  ABSENT     // no check-in
+}
 
 // ─────────────────────────────────────────────
 // USERS
@@ -380,7 +385,7 @@ model User {
   importedTickets  ImportedTicket[] @relation("TicketImportedBy")
   agentPermission  AgentPermission?
 
-
+  attendances  Attendance[]  @relation("UserAttendance")
   assignedLeads      Lead[]       @relation("AgentLeads")
   assignedCustomers  Customer[]   @relation("AgentCustomers")
   followUps          FollowUp[]   @relation("AgentFollowUps")
@@ -1947,4 +1952,41 @@ model UnifiedPayment {
   @@index([dealId])
 
   @@map("unified_payments")
+}
+
+
+// ─────────────────────────────────────────────
+// ADD THESE MODELS TO YOUR EXISTING schema.prisma
+// ─────────────────────────────────────────────
+
+model AttendanceSettings {
+  id                  String   @id @default(uuid())
+  minimumWorkingHours Float?   // e.g. 6.0 — null means no restriction
+  fullDayHours        Float    @default(8) // hours needed for PRESENT status
+  updatedById         String?
+  updatedAt           DateTime @updatedAt
+  createdAt           DateTime @default(now())
+
+  @@map("attendance_settings")
+}
+
+model Attendance {
+  id          String           @id @default(uuid())
+  userId      String
+  user        User             @relation("UserAttendance", fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime         // Store as date only (start of day UTC)
+  checkInTime DateTime?
+  checkOutTime DateTime?
+  totalHours  Float?           // Calculated on checkout
+  status      AttendanceStatus @default(ABSENT)
+  note        String?          // Admin override note
+  isManual    Boolean          @default(false) // true if admin manually set
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@index([status])
+  @@map("attendances")
 }
