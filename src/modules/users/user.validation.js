@@ -26,33 +26,22 @@ export const ACTIONS = ['view', 'create', 'edit', 'delete'];
 export const createUserSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   email: z.string().email('Invalid email address').toLowerCase(),
-  phone: z
-    .string()
-    .regex(/^[+]?[\d\s\-()]{7,15}$/, 'Invalid phone number')
-    .optional(),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
+  phone: z.string().optional().nullable(),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
   role: z.enum(ROLES).default('AGENT'),
-  department: z.string().max(100).optional(),
-  profileImage: z.string().url('Invalid image URL').optional(),
+  department: z.string().max(100).optional().nullable(),
+  profileImage: z.string().optional().nullable(),
   status: z.enum(STATUSES).default('ACTIVE'),
 });
 
 export const updateUserSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   email: z.string().email().toLowerCase().optional(),
-  phone: z
-    .string()
-    .regex(/^[+]?[\d\s\-()]{7,15}$/, 'Invalid phone number')
-    .optional()
-    .nullable(),
+  phone: z.string().optional().nullable(),
   role: z.enum(ROLES).optional(),
   department: z.string().max(100).optional().nullable(),
   status: z.enum(STATUSES).optional(),
-  profileImage: z.string().url('Invalid image URL').optional().nullable(),
+  profileImage: z.string().optional().nullable(),
   customRoleId: z.string().uuid('Invalid role ID').optional().nullable(),
 });
 
