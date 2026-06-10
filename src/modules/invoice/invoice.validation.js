@@ -55,6 +55,7 @@ export const updateCompanySettingsSchema = z.object({
   companyName: z.string().min(1).optional(),
   logoUrl:     optionalUrl,
   tagline:     emptyToNull,
+  signatureUrl: z.string().nullable().optional(),
 
   address:  emptyToNull,
   city:     emptyToNull,
